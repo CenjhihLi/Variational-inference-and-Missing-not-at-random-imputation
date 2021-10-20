@@ -1,0 +1,11 @@
+# Ignoring directories
+# This is the experiments results
+__pycache__/
+experiments/
+Extending research of masters thesis/
+.ipynb_checkpoints/
+__pycache__/
+# Ignoring file
+# results and test file
+test.py
+test.ipynb
