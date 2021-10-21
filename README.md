@@ -1,10 +1,11 @@
 # A side project _ Variational inference and Missing not at random
 
  I have an idea from my extending research of Master's thesis, I may try if this idea can work.
- I also write a proposal for this idea.
-### Not finished yet, updating ###
-# model/MIWAE finished (pytorch) 
-# model/imputer finished (missRandom, mice, knn, simpleimputer) 
+
+ Not finished yet, updating 
+
+ model/MIWAE finished (pytorch) 
+ model/imputer finished (missRandom, mice, knn, simpleimputer) 
 
 # I will reproduce some common methods first and make them easier and more convenient to use in this project.
 The `Demo.ipynb` file will demonstrate how to use the objects in the project.
@@ -14,10 +15,9 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  I tried to develop an imputation model to deal with missing not at random (MNAR) data. I analyzed the observed values themselves and tried to impute data from similar observations. `All variables in X can be MNAR`
 
  After graduation, it came to my mind that I should try some latent variable ideas.
- Instead of modeling missing pattern as many MNAR methods, I assumed the MNAR itself as a latent variable since we assumed that the dataset must contained MAR and MNAR observations. 
- ` actually the latent variable represent "if an observation follow the MNAR mechanism" `
- In fact, if `all` observations in a dataset are MNAR, the observed data must be completely truncated such that no methods are able to deal with them.
- In practice, the cause of missing data are complicated. Even though we know what cause missing data, it is likely that most observations follow this reason but still some observations does not. `All observations in a dataset are MNAR` actually is a strong assumption.
+ Instead of modeling missing pattern as many MNAR methods, I assumed the MNAR itself as a latent variable since we assumed that the dataset must contained MAR and MNAR observations. ` actually the latent variable represent "if an observation follow the MNAR mechanism" `
+
+ In fact, if `all` observations in a dataset are MNAR, the observed data must be completely truncated such that no methods are able to deal with them. In practice, the cause of missing data are complicated. Even though we know what cause missing data, it is likely that most observations follow this reason but still some observations does not. `All observations in a dataset are MNAR` actually is a strong assumption.
 
  In our assumption, even a complete observation could follow MNAR mechanism since the value may not satisfy the missing condition.
  Note that if an observation does not follow MNAR mechanism, then this observation is MAR.
@@ -42,28 +42,41 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  In addition, these models might help to make a suitable model to achieve the purpose. 
 
  MIWAE: http://proceedings.mlr.press/v97/mattei19a/mattei19a.pdf (ICML, 2019)
+
  notMIWAE: https://arxiv.org/pdf/2006.12871.pdf (2021ICLR)
 
+
  other methods:
+
  `from sklearn.impute import SimpleImputer, MissingIndicator, KNNImputer, IterativeImputer`
+
   MICE: https://www.jstatsoft.org/article/view/v045i03 (jornal of statistical software, 2011, original paper 2000)
+
  `Impute (Gibbs sampling) then regress, apply different methods to the regression step to deal with different kind of data.`
+
  MissForest: https://doi.org/10.1093/bioinformatics/btr597 (Bioinformatics, 2012)
+
  `allow mix type of variables` This is similar to MICE. Replace the regression model to random forest. 
+
  `from sklearn.ensemble import RandomForestRegressor, IterativeImputer(estimator = RandomForestRegressor)`
 
  neural networks:   
  NeuMiss: https://arxiv.org/abs/2106.00311 (Arxive, 2021)
+
  EDDI: https://arxiv.org/pdf/1809.11142.pdf (active learning, VAE,  PMLR, 2019)
+
  GAIN: https://www.vanderschaar-lab.com/papers/ICML_GAIN.pdf (ICML, 2018)
 
  for missing not at random:
+
  https://doi.org/10.1093/biomet/asz054 (Biometrika, 2019) (this is for missing response y)
+
  Nonparametric Pattern-Mixture Models: https://arxiv.org/pdf/1904.11085.pdf (Arxive, 2019)
  
 
  # environment:
  I recommend using docker or anaconda.
+ 
  Personally Recommend:
  1. R is convenient in processing structured data, but really is slow for developing your own methods.
     If you want to use R, please use Rcpp and develop the methods by C++.
