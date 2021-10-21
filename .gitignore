@@ -1,7 +1,17 @@
 # Ignoring directories
-# This is the experiments results
+# These are the experiments results and download dataset
 __pycache__/
 experiments/
+data/
+#########################################################
+
+Extending research of masters thesis/results/
+Extending research of masters thesis/simulation_criteria
+Extending research of masters thesis/simulation_criteria1
+Extending research of masters thesis/simulation_plot
+Extending research of masters thesis/.RData
+Extending research of masters thesis/.Rhistory
+
 Extending research of masters thesis/
 .ipynb_checkpoints/
 __pycache__/
