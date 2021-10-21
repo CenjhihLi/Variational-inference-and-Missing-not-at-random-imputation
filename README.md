@@ -7,8 +7,8 @@
  model/MIWAE finished (pytorch)  
  model/imputer finished (missRandom, mice, knn, simpleimputer)  
 
-# I will reproduce some common methods first and make them easier and more convenient to use in this project.
-The `Demo.ipynb` file will demonstrate how to use the objects in the project.
+I will reproduce some common methods first and make them easier and more convenient to use in this project.  
+The `Demo.ipynb` file will demonstrate how to use the objects in the project. 
 
 # Some works before this.
  The topic of my Master's thesis is developing methods for handling missing values in online user-generated product reviews (UGPR). (I focused on missing X but not Y)
