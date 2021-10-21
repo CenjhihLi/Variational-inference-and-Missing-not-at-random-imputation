@@ -1,16 +1,13 @@
 import numpy as np
 import torch
-from torch.jit import Error
 import torch.nn as nn
 import torch.optim as optim
-import argparse
-import os
+#import argparse
+#import os
 from torchvision import transforms
-from torchvision.utils import save_image
+#from torch.jit import Error
+#from torchvision.utils import save_image
 from torchsummary import summary
-
-from model.MIWAE import MIWAE
-from utils.dataframe import dataframe
 
 """
 Find a data from here
@@ -83,7 +80,7 @@ class trainer(object):
         for batch_idx, (data, _) in enumerate(self.train_loader):
             data = data.to(self.device)
             self.optimizer.zero_grad()
-            outdic, q_z = self.model(data)
+            outdic, q_z, out_sample = self.model(data)
             loss = self.MIWAE_ELBO(outdic)
             loss.backward()
             train_loss += loss
@@ -103,7 +100,7 @@ class trainer(object):
         with torch.no_grad():
             for i, (data, _) in enumerate(self.test_loader):
                 data = data.to(self.device)
-                outdic, q_z = self.model(data)
+                outdic, q_z, out_sample = self.model(data)
                 test_loss += self.MIWAE_ELBO(outdic)
 
         test_loss /= len(self.test_loader.dataset)
