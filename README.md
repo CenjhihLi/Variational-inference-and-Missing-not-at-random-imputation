@@ -77,10 +77,10 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
     However, keras provide some api to build model very fast. 
     Keras is great for building models quickly.
     
-conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c conda-forge
+`conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c conda-forge`  
 check `build_env.txt`
 
-docker run -it --rm -p 8888:8888 -v /project path/:/mount/src -w /mount/src --gpus "device=0" nvcr.io/nvidia/pytorch:21.09-py3
+`docker run -it --rm -p 8888:8888 -v /project path/:/mount/src -w /mount/src --gpus "device=0" nvcr.io/nvidia/pytorch:21.09-py3`  
 more docker images see https://ngc.nvidia.com/catalog/containers
 
 
