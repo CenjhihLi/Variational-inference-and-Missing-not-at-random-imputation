@@ -1,13 +1,3 @@
-conda create --name federated python=3.8
-conda install cudatoolkit=10.1
-conda install cudnn=7.6
-
-conda install matplotlib~=3.4.0
-conda install tensorflow=2.3
-
-pip install wquantiles=0.6
-pip install nest_asyncio
-pip install tensorflow-federated=0.17.0
-python -m pip install -U setuptools pip
-pip install cupy-cuda101
-pip install --upgrade git+https://github.com/MedMNIST/MedMNIST.git
+conda create --name pytorch python=3.8
+conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c conda-forge
+conda install scikit-learn torchsummary matplotlib

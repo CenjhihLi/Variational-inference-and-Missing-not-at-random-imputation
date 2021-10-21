@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.distributions as pdfun
 #import argparse
 #import os
 from torchvision import transforms
@@ -14,7 +15,7 @@ Find a data from here
 https://archive.ics.uci.edu/ml/datasets.php
 """
 
-class trainer(object):
+class VAEtrainer(object):
     def __init__(self, model, train_loader, test_loader, batch_size = 16, log_interval = 10):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.eps = torch.finfo(float).eps #a small epsilon value
@@ -106,3 +107,7 @@ class trainer(object):
         test_loss /= len(self.test_loader.dataset)
         print('====> Test set loss: {:.4f}'.format(test_loss))
 
+class GANtrainer(object):
+    def __init__(self, Generator, Discriminator):
+        self.gen = Generator
+        self.dis = Discriminator
