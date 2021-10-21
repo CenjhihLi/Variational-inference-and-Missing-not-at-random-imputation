@@ -4,8 +4,8 @@
 
  Not finished yet, updating 
 
- model/MIWAE finished (pytorch) 
- model/imputer finished (missRandom, mice, knn, simpleimputer) 
+ model/MIWAE finished (pytorch)  
+ model/imputer finished (missRandom, mice, knn, simpleimputer)  
 
 # I will reproduce some common methods first and make them easier and more convenient to use in this project.
 The `Demo.ipynb` file will demonstrate how to use the objects in the project.
@@ -67,15 +67,15 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  I recommend using docker or anaconda.
  
  Personally Recommend:
- 1. R is convenient in processing structured data, but really is slow for developing your own methods.
-    If you want to use R, please use Rcpp and develop the methods by C++.
-    Then use apply family to employ the function from Rcpp.
-    I use R in my thesis and the extending works. 
+ 1. R is convenient in processing structured data, but is really slow for developing your own methods.
+    If using R, using Rcpp and developing the methods by C++ might be great.  
+    Then use `apply` family to employ the function from Rcpp.  
+    I use R in my thesis and the extending works.  
     I decide to use python since there are a lot of packages with different usage (relative or not relative to machine learning) in python.
- 2. Recommend pytorch rather than tensorflow, if really want to use tf, I recommend tf2 rather than tf1.
+ 2. Recommend pytorch rather than tensorflow, if really want to use tf, I recommend tf2 rather than tf1. 
     The major reason is that the documentary of pytorch is really better than tensorflow...
     However, keras provide some api to build model very fast. 
-    If you don't need to develop your own algorithm, then keras is great.
+    Keras is great for building models quickly.
     
 conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c conda-forge
 check `build_env.txt`
