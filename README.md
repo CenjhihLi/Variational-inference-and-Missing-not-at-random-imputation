@@ -54,13 +54,13 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  `from sklearn.ensemble import RandomForestRegressor, IterativeImputer(estimator = RandomForestRegressor)`
 
  neural networks:   
- NeuMiss: https://arxiv.org/abs/2106.00311 (Arxive, 2021)  
+ NeuMiss: https://arxiv.org/abs/2106.00311 (Arxiv, 2021)  
  EDDI: https://arxiv.org/pdf/1809.11142.pdf (active learning, VAE,  PMLR, 2019)  
  GAIN: https://www.vanderschaar-lab.com/papers/ICML_GAIN.pdf (ICML, 2018)  
    
  for missing not at random:  
  https://doi.org/10.1093/biomet/asz054 (Biometrika, 2019) (this is for missing response y)  
- Nonparametric Pattern-Mixture Models: https://arxiv.org/pdf/1904.11085.pdf (Arxive, 2019)
+ Nonparametric Pattern-Mixture Models: https://arxiv.org/pdf/1904.11085.pdf (Arxiv, 2019)
 
 
  # environment:
