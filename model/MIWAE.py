@@ -151,9 +151,8 @@ class MIWAE(nn.Module):
         ##########################
         """
         input:
-        X 
-        M 
-        n_samples
+        batch self.M, self.X in utils/dataframe
+        n_samples represents sample dim for sampling
         """ 
         x = torch.reshape(x, (-1,self.d))
         m = torch.reshape(m, (-1,self.d)) #TODO: need to confirm if data itself is correct, shape is correct now
@@ -226,7 +225,7 @@ class MIWAE(nn.Module):
         """
         https://github.com/microsoft/EDDI
 
-        input:  batch self.M, self.X 
+        input:  batch self.M, self.X in utils/dataframe
         output: embedding self.g
         """
         self.E = Variable(torch.randn(self.d, self.embedding_size))

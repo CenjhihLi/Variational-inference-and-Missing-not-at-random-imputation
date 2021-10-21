@@ -22,7 +22,7 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  In our assumption, even a complete observation could follow MNAR mechanism since the value may not satisfy the missing condition.
  Note that if an observation does not follow MNAR mechanism, then this observation is MAR.
 
- I applied MICE and kNNI (hotdeck, since we the MNAR observation might be more similar to other MNAR observations) to impute the MAR and MNAR observations. However, the estimation were not significantly better than applied MICE to the whole dataset even though I recognized MNAR precisely. 
+ I applied MICE and kNNI (hotdeck, since we thought the MNAR observation might be more similar to other MNAR observations) to impute the MAR and MNAR observations. However, the estimation were not significantly better than applied MICE to the whole dataset even though I recognized MNAR precisely. 
  
  I think the problem might be the imputation methods, maybe I should tried to estimate the distribution p(x_observed | MNAR or not) by discarding MNAR observations and sampling the whole dataset from the distribution obtained from partial observations. 
 
