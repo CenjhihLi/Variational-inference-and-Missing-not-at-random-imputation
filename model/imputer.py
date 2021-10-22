@@ -51,10 +51,10 @@ class imputer(object):
         #Xrec = self.imp.transform(X)
         #np.sqrt(np.sum((Xtrain - Xrec) ** 2 * (1 - M)) / np.sum(1 - M))) 
     
-    def __getParlist__(self):
+    def getParlist(self):
         return self._parmap
 
-    def __getParvalue__(self):
+    def getParvalue(self):
         out = dict()
         for _ in self._pardict:
             for key in self._pardict[_]:

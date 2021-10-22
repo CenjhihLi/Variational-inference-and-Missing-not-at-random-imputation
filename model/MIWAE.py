@@ -38,6 +38,7 @@ class MIWAE(nn.Module):
         if out_dist not in ['gauss', 'normal', 'Bernoulli', 't', 't-distribution']:
             raise ValueError("use 'gauss', 'normal', or 'Bernoulli' as out_dist")
         super(MIWAE, self).__init__()
+        self.loss = 'MIWAE_ELBO'
         self.activation = activation
         self.out_activation = out_activation
         self.d = data_dim
@@ -117,16 +118,17 @@ class MIWAE(nn.Module):
     def reparameterize(self, mu, log_var):
         std = torch.sqrt(torch.exp(log_var))
         q_z = pdfun.normal.Normal(loc = mu, scale=std)
+        # q_z.rsample(self.n_samples): shape [n_samples, batch_size, d] 
         return q_z, q_z.rsample(self.n_samples)
 
-    def gauss_decoder(self, z):
+    def _gauss_decoder(self, z):
         z = self.fc_dec(z) #in z_dim, out h_dim
         mu = self.fc_dec_mu(z) if self.out_activation is None else self.out_activation(self.fc_dec_mu(z)) 
         #in h_dim, out self.d (X.shape from dataframe.__init__())
         std = F.softplus(self.fc_dec_std(z)) #in h_dim, out self.d (X.shape from dataframe.__init__())
         return mu, std
     
-    def t_decoder(self, z):
+    def _t_decoder(self, z):
         z = self.fc_dec(z) #in z_dim, out h_dim
         
         mu = self.fc_dec_mu(z) 
@@ -142,10 +144,41 @@ class MIWAE(nn.Module):
         nn.init.orthogonal_(df.weights)
         return mu, log_sigma, df
     
-    def bernoulli_decoder(self, z):
+    def _bernoulli_decoder(self, z):
         z = self.fc_dec_ber(z) #in z_dim, out h_dim
         logits = self.fc_dec_logits(z) 
         return logits
+    
+    def decoder(self, z): 
+        """
+        this is for sample and reconstruct
+        but do not use in forward since 
+        z = z.permute(1, 0, 2) and logits = self._bernoulli_decoder(z) will oprate twice
+        """
+        # self.l_z: shape [n_samples, batch_size, d] 
+        z = z.permute(1, 0, 2)  # shape [batch_size, n_samples, d]
+        if self.out_dist in ['gauss', 'normal']:
+            mu, std = self._gauss_decoder(z)
+            # p(x|z)
+            self.p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
+            self.l_out_mu = mu
+            l_out_sample = self.p_x_given_z.sample()
+
+        elif self.out_dist in ['t', 't-distribution']:
+            mu, log_sig, df = self._t_decoder(z)
+            # p(x|z)
+            self.p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
+                                                  df=3 + torch.nn.softplus(df))
+            self.l_out_mu = mu
+            l_out_sample = self.p_x_given_z.sample()
+
+        elif self.out_dist == 'Bernoulli':
+            logits = self._bernoulli_decoder(z)
+            # p(x|z)
+            self.p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
+            self.l_out_mu = F.sigmoid(logits) # TODO: logits?
+            l_out_sample = self.p_x_given_z.sample()
+        return l_out_sample
 
     def forward(self, x, m):
         ##########################
@@ -168,58 +201,57 @@ class MIWAE(nn.Module):
         outdic=dict()
         # encoder
         self.q_mu, self.q_log_sig = self.encoder(input_tensor)
-
         outdic['q_mu'], outdic['q_log_sig'] = self.q_mu, self.q_log_sig
+
         # sample latent values
         q_z, self.l_z = self.reparameterize(self.q_mu, self.q_log_sig)
+
+        """
+        VAE stucture only need: l_out_sample = self.decoder(self.l_z)
+        but I compute some complicated term for MIWAE_ELBO in the following
+        """
+        # parameters from decoder
         # self.l_z: shape [n_samples, batch_size, d] 
         self.l_z = self.l_z.permute(1, 0, 2)  # shape [batch_size, n_samples, d]
-
-        # parameters from decoder
         if self.out_dist in ['gauss', 'normal']:
-            mu, std = self.gauss_decoder(self.l_z)
+            mu, std = self._gauss_decoder(self.l_z)
             # p(x|z)
-            p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
-
-            self.log_p_x_given_z = torch.sum(
-                torch.unsqueeze(m, 1) * p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
-                #shape [batch, 1, self.d]   [batch, 1, self.d]
+            self.p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
             self.l_out_mu = mu
-            l_out_sample = p_x_given_z.sample()
+            l_out_sample = self.p_x_given_z.sample()
 
         elif self.out_dist in ['t', 't-distribution']:
-            mu, log_sig2, df = self.t_decoder(self.l_z)
-
+            mu, log_sig, df = self._t_decoder(self.l_z)
             # p(x|z)
-            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig2) + 0.0001,
+            self.p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
                                                   df=3 + torch.nn.softplus(df))
-
-            self.log_p_x_given_z = torch.sum(
-                torch.unsqueeze(m, 1) * p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
-
             self.l_out_mu = mu
-            l_out_sample = p_x_given_z.sample()
+            l_out_sample = self.p_x_given_z.sample()
 
         elif self.out_dist == 'Bernoulli':
-            logits = self.bernoulli_decoder(self.l_z)
+            logits = self._bernoulli_decoder(self.l_z)
             outdic['logits'] = logits
-
             # p(x|z)
-            p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
-
-            self.log_p_x_given_z = torch.sum(
-                torch.unsqueeze(m, 1) * p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
-
+            self.p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
             self.l_out_mu = F.sigmoid(logits) # TODO: logits?
-            l_out_sample = p_x_given_z.sample()
-        #q_z is from self.reparameterize
-        #q_z_expand is after unsqueeze (n_sample dim)
+            l_out_sample = self.p_x_given_z.sample()
+    
+        # q_z is from self.reparameterize
+        # q_z_expand is after unsqueeze (n_sample dim)
+        # can also input q_z into MIWAE_ELBO and compute inside loss function, but I compute here
         q_z_expand = pdfun.normal.Normal(loc=torch.unsqueeze(q_z.loc, 1), scale=torch.unsqueeze(q_z.scale, 1))
         self.log_q_z_given_x = torch.sum(q_z_expand.log_prob(self.l_z), -1) #evaluate the z-samples in q(z|x)
 
+        # log_p_x_given_z is depend on outdist 
+        # computing here might be more convenient than computing in trainer
+        self.log_p_x_given_z = torch.sum(
+                torch.unsqueeze(m, 1) * self.p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
+                #shape [batch, 1, self.d]   [batch, 1, self.d]
         self.log_p_z = torch.sum(self.latent_prior.log_prob(self.l_z), -1) #evaluate the z-samples in the prior
         outdic['lpxz'], outdic['lqzx'], outdic['lpz'] = self.log_p_x_given_z, self.log_q_z_given_x, self.log_p_z
-        return outdic, q_z_expand, l_out_sample
+        return outdic, q_z, l_out_sample 
+        # l_out_sample is sample from p_x_given_z in decoder
+        # z is sample from q_z, then obtain the ouput l_out_sample by decode(z)
 
     def permutation_invariant_embedding(self, x, m):
         """

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.distributions as pdfun
 #import argparse
@@ -57,14 +58,16 @@ class VAEtrainer(object):
         return torch.sum(log_avg_weight, -1)
 
     def gauss_loss(self, outdic, indic):
-        x, m = indic['x'], indic['m']
+        x = indic['x']
+        m = np.array(np.isnan(x), dtype=np.float32)
         mu, log_sig = outdic['q_mu'], outdic['q_log_sig']
         #p(x | z) with Gauss z
         p_x_given_z = - (np.log(2 * np.pi) + log_sig + torch.square(x - mu) / (torch.exp(log_sig) + self.eps))/2.
         return torch.sum(p_x_given_z * m, -1)  # sum over d-dimension
 
     def bernoulli_loss(self, outdic, indic):
-        x, m = indic['x'], indic['m']
+        x = indic['x']
+        m = np.array(np.isnan(x), dtype=np.float32)
         y = outdic['logits']
         #p(x | z) with bernoulli z
         p_x_given_z = x * torch.log(y + self.eps) + (1 - x) * torch.log(1 - y + self.eps)
@@ -74,6 +77,15 @@ class VAEtrainer(object):
         q_mu, q_log_sig = outdic['q_mu'], outdic['q_log_sig']
         KL = 1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig)
         return - torch.sum(KL, 1)/2.
+    
+    def VAE_loss(self, outdic, indic):
+        recon_x, x = indic['recon_x'], indic['x']
+        q_mu, q_log_sig = outdic['q_mu'], outdic['q_log_sig']
+        #BCE = 
+        BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+        # KLD = 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        KLD = -0.5 * torch.sum(1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig))
+        return BCE + KLD
 
     def train(self, epoch):
         self.model.train()
@@ -82,7 +94,16 @@ class VAEtrainer(object):
             data = data.to(self.device)
             self.optimizer.zero_grad()
             outdic, q_z, out_sample = self.model(data)
-            loss = self.MIWAE_ELBO(outdic)
+            #in VAE, z is sample from q_z, then obtain the ouput recon_x by decode(z)
+            #but in MIWAE, z is sample from p_x_given_z
+            if self.model.loss=='MIWAE_ELBO':
+                loss = self.MIWAE_ELBO(outdic)
+            elif self.model.loss=='VAE_loss':
+                indic = {
+                    'x': data,
+                    'recon_x': out_sample,
+                }
+                loss = self.VAE_loss(outdic, indic)
             loss.backward()
             train_loss += loss
             self.optimizer.step()

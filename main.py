@@ -43,10 +43,14 @@ device = torch.device("cuda" if args.cuda else "cpu")
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
-#if __name__ == "__main__":
+def main():
 #    for epoch in range(1, args.epochs + 1):
 #        train(epoch)
 #        test(epoch)
 #        with torch.no_grad():
 #            sample = torch.randn(64, 20).to(device)
 #            sample = model.decode(sample).cpu()
+    pass
+
+#if __name__ == "__main__":
+#    main()
