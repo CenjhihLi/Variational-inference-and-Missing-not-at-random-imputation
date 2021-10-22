@@ -18,11 +18,11 @@ class VAE(nn.Module):
         self.fc3 = nn.Linear(self.z_dim, self.h_dim) #dec from z to hidden
         self.fc4 = nn.Linear(self.h_dim, input_dim)  #dec to original
 
-    def encode(self, x):
+    def encoder(self, x):
         h1 = F.relu(self.fc1(x))
         return self.fc21(h1), self.fc22(h1)
 
-    def decode(self, z):
+    def decoder(self, z):
         h3 = F.relu(self.fc3(z))
         #return F.sigmoid(self.fc4(h3))
         return self.fc4(h3)
@@ -35,8 +35,8 @@ class VAE(nn.Module):
 
     def forward(self, x):
         outdic = dict()
-        q_mu, q_log_sig = self.encode(torch.reshape(x, (-1, self.input_dim)))
+        q_mu, q_log_sig = self.encoder(torch.reshape(x, (-1, self.input_dim)))
         outdic['q_mu'], outdic['q_log_sig'] = q_mu, q_log_sig
                 # logvar to std
         q_z, z = self.reparameterize(q_mu, q_log_sig)     # create a torch distribu,   sample with reparameterizationtion
-        return outdic, q_z, self.decode(z)   # z is sample from q_z, then obtain the ouput recon_x by decode(z)
+        return outdic, q_z, self.decoder(z)   # z is sample from q_z, then obtain the ouput recon_x by decode(z)

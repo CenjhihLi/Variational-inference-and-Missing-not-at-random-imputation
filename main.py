@@ -18,7 +18,8 @@ from utils.experiment import *
 Find a data from here
 https://archive.ics.uci.edu/ml/datasets.php
 """
-parser = argparse.ArgumentParser(description='VAE MNIST Example')
+parser = argparse.ArgumentParser(description='VAE Example')
+
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',

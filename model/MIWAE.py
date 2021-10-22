@@ -160,7 +160,7 @@ class MIWAE(nn.Module):
         """
         this is for sample and reconstruct
         but do not use in forward since 
-        z = z.permute(1, 0, 2) and logits = self._bernoulli_decoder(z) will oprate twice
+        z = z.permute(1, 0, 2) and logits = self._bernoulli_decoder(z) will operate twice
         """
         # self.l_z: shape [n_samples, batch_size, d] 
         z = z.permute(1, 0, 2)  # shape [batch_size, n_samples, d]
