@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.distributions as pdfun
 import torch.nn.functional as F
 from torch.autograd import Variable
-from torchvision.utils import save_image
 
 """
 Find a data from here
@@ -197,6 +196,7 @@ class MIWAE(nn.Module):
         x = torch.reshape(x, (-1,self.d))
         m = torch.isnan(x).float().clone()
         #m = torch.reshape(m, (-1,self.d)) #TODO: need to confirm if data itself is correct, shape is correct now
+        x = torch.nan_to_num(x, nan = 0)
         if not self.testing and self.learnable_imputation:
             input_tensor = x + (1-m) * self.imp
         elif not self.testing and self.permutation_invariance:

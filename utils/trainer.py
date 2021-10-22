@@ -81,13 +81,12 @@ class VAEtrainer(object):
     def VAE_loss(self, outdic, indic):
         recon_x, x = indic['recon_x'], indic['x']
         q_mu, q_log_sig = outdic['q_mu'], outdic['q_log_sig']
-        #BCE = 
         BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
         # KLD = 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
         KLD = -0.5 * torch.sum(1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig))
         return BCE + KLD
 
-    def train(self, epoch):
+    def _batch_train(self, epoch):
         self.model.train()
         train_loss = 0
         for batch_idx, (data, _) in enumerate(self.train_loader):
@@ -116,17 +115,29 @@ class VAEtrainer(object):
         print('====> Epoch: {} Average loss: {:.4f}'.format(
             epoch, train_loss / len(self.train_loader.dataset)))
 
-    def test(self):
+    def _batch_val(self, epoch):
         self.model.eval()
-        test_loss = 0
+        val_loss = 0
         with torch.no_grad():
             for i, (data, _) in enumerate(self.test_loader):
                 data = data.to(self.device)
                 outdic, q_z, out_sample = self.model(data)
-                test_loss += self.MIWAE_ELBO(outdic)
+                if self.model.loss=='MIWAE_ELBO':
+                    val_loss += self.MIWAE_ELBO(outdic)
+                elif self.model.loss=='VAE_loss':
+                    indic = {
+                        'x': data,
+                        'recon_x': out_sample,
+                    }
+                    val_loss += self.VAE_loss(outdic, indic)
 
-        test_loss /= len(self.test_loader.dataset)
-        print('====> Test set loss: {:.4f}'.format(test_loss))
+        val_loss /= len(self.test_loader.dataset)
+        print('====> Test set loss: {:.4f}'.format(val_loss))
+    
+    def train(self, max_epochs):
+        for epoch in range(1, max_epochs + 1):
+            self._batch_train(epoch)
+            self._batch_val(epoch)
 
 class GANtrainer(object):
     def __init__(self, Generator, Discriminator):

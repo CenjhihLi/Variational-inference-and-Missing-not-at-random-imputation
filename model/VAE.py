@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as pdfun
 import torch.utils.data
-
+"""
+https://arxiv.org/pdf/1312.6114.pdf
+"""
 class VAE(nn.Module):
     def __init__(self, input_dim = 784, h_dim= 400, z_dim = 20):
         super(VAE, self).__init__()
@@ -24,8 +26,7 @@ class VAE(nn.Module):
 
     def decoder(self, z):
         h3 = F.relu(self.fc3(z))
-        #return F.sigmoid(self.fc4(h3))
-        return self.fc4(h3)
+        return F.sigmoid(self.fc4(h3))
     
     #randomize latent vector
     def reparameterize(self, mu, q_log_sig):

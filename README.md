@@ -8,6 +8,8 @@
  model/imputer finished (missRandom, mice, knn, simpleimputer)  
 
 I will reproduce some common methods first and make them easier and more convenient to use in this project.  
+Yet, the most important thing for a deep variational inference model is the probability model for the latent variable and the evidence lower bound(ELBO), which might not be mentioned here. I will only provide the papers and note the equation number at the `.py` file.
+
 The `Demo.ipynb` file will demonstrate how to use the objects in the project. 
 
 # Some works before this.
@@ -24,7 +26,7 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
 
  I applied MICE and kNNI (hotdeck, since we thought the MNAR observation might be more similar to other MNAR observations) to impute the MAR and MNAR observations. However, the estimation were not significantly better than applied MICE to the whole dataset even though I recognized MNAR precisely. 
  
- I think the problem might be the imputation methods, maybe I should tried to estimate the distribution p(x_observed | MNAR or not) by discarding MNAR observations and sampling the whole dataset from the distribution obtained from partial observations. 
+ I think the problem might be the imputation methods (Or maybe just because MICE is great?) , maybe I should tried to estimate the distribution p(x_observed | MNAR or not) by discarding MNAR observations and sampling the whole dataset from the distribution obtained from partial observations. 
 
  # IDEA
  I think we might assumed the MNAR itself as a latent variable and develop a method to estimate the distribution of full dataset. The purpose is to estimate the distribution of full dataset without knowing what cause missingness. If this cannot work, estimate the distribution of full dataset from a prior distribution of the MNAR guessing is also great. 
@@ -55,6 +57,7 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
 
  neural networks:   
  NeuMiss: https://arxiv.org/abs/2106.00311 (Arxiv, 2021)  
+      (The paper mension that MICE procedure is great under any missing mechanism)
  EDDI: https://arxiv.org/pdf/1809.11142.pdf (active learning, VAE,  PMLR, 2019)  
  GAIN: https://www.vanderschaar-lab.com/papers/ICML_GAIN.pdf (ICML, 2018)  
    
