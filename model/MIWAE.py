@@ -187,7 +187,7 @@ class MIWAE(nn.Module):
             l_out_sample = self.p_x_given_z.sample()
         return l_out_sample
 
-    def forward(self, x, m):
+    def forward(self, x):
         ##########################
         """
         input:
@@ -195,7 +195,8 @@ class MIWAE(nn.Module):
         n_samples represents sample dim for sampling
         """ 
         x = torch.reshape(x, (-1,self.d))
-        m = torch.reshape(m, (-1,self.d)) #TODO: need to confirm if data itself is correct, shape is correct now
+        m = torch.isnan(x).float().clone()
+        #m = torch.reshape(m, (-1,self.d)) #TODO: need to confirm if data itself is correct, shape is correct now
         if not self.testing and self.learnable_imputation:
             input_tensor = x + (1-m) * self.imp
         elif not self.testing and self.permutation_invariance:

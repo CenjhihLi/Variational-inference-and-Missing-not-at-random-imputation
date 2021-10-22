@@ -37,7 +37,7 @@ class VAEtrainer(object):
             ]
         )
 
-    def model_summary(self, forward_input = 2, dim = 10):
+    def model_summary(self, forward_input = 1, dim = 10):
         if forward_input == 1:
             summary(self.model, input_size = (16,dim))
         elif forward_input == 2:
@@ -116,7 +116,7 @@ class VAEtrainer(object):
         print('====> Epoch: {} Average loss: {:.4f}'.format(
             epoch, train_loss / len(self.train_loader.dataset)))
 
-    def test(self, epoch):
+    def test(self):
         self.model.eval()
         test_loss = 0
         with torch.no_grad():
@@ -130,5 +130,21 @@ class VAEtrainer(object):
 
 class GANtrainer(object):
     def __init__(self, Generator, Discriminator):
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.gen = Generator
-        self.dis = Discriminator
+        self.gen.to(self.device)
+        self.gen_optimizer = optim.Adam(self.gen.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08)
+        self.dis = Discriminator 
+        self.dis.to(self.device)       
+        self.dis_optimizer = optim.Adam(self.dis.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08)
+    
+    def BCE_loss(self, d_indicator, indicator):
+        return nn.BCEWithLogitsLoss(reduction="elementwise_mean")(d_indicator, indicator)
+
+    def Gen_loss(self, alpha, indicator, d_indicator, gen_x, x):
+        G_loss1 = ((1 - indicator) * (torch.sigmoid(d_indicator)+1e-8).log()).mean()/(1-indicator).sum()
+        G_mse_loss = nn.MSELoss(reduction="elementwise_mean")(indicator*x, indicator*gen_x) / indicator.sum()
+        G_loss = G_loss1 + alpha*G_mse_loss
+        return G_loss
+
+        
