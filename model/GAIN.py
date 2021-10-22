@@ -16,7 +16,7 @@ class Discriminator(nn.Module):
     
     def init_weight(self):
         layers = [self.fc1, self.fc2, self.fc3]
-        [torch.nn.init.xavier_normal_(layer.weight) for layer in layers]
+        [nn.init.xavier_normal_(layer.weight) for layer in layers]
         
     def forward(self, x, m, g, h):
         """

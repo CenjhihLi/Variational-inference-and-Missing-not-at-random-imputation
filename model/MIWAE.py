@@ -105,6 +105,12 @@ class MIWAE(nn.Module):
         self.fc_dec_df = nn.Linear(self.h_dim, self.d)
         self.fc_dec_logits = nn.Linear(self.h_dim, self.d) # prob = y + eps
         self.emb = nn.Linear(self.embedding_size + 1,self.code_size)
+        #self.init_weight()
+
+    def init_weight(self):
+        layers = [self.enc, self.fc_mu, self.fc_sig, self.fc_dec, self.fc_dec_ber, #self.fc_dec_mu,
+            self.fc_dec_std, self.fc_dec_df, self.fc_dec_logits, self.emb]
+        [nn.init.xavier_normal_(layer.weight) for layer in layers]
 
     def encoder(self, x):
         h = self.enc(x) #in self.d, out h_dim
@@ -124,6 +130,7 @@ class MIWAE(nn.Module):
     def _gauss_decoder(self, z):
         z = self.fc_dec(z) #in z_dim, out h_dim
         mu = self.fc_dec_mu(z) if self.out_activation is None else self.out_activation(self.fc_dec_mu(z)) 
+        #nn.init.xavier_normal_(mu.weight)
         #in h_dim, out self.d (X.shape from dataframe.__init__())
         std = F.softplus(self.fc_dec_std(z)) #in h_dim, out self.d (X.shape from dataframe.__init__())
         return mu, std
@@ -132,11 +139,11 @@ class MIWAE(nn.Module):
         z = self.fc_dec(z) #in z_dim, out h_dim
         
         mu = self.fc_dec_mu(z) 
-        nn.init.orthogonal_(mu.weights)
+        nn.init.orthogonal_(mu.weight)
         mu = mu if self.out_activation is None else self.out_activation(mu)
         #in h_dim, out self.d (X.shape from dataframe.__init__())
         log_sigma = self.fc_dec_log_sigma(z) 
-        nn.init.orthogonal_(log_sigma.weights)
+        nn.init.orthogonal_(log_sigma.weight)
         activate = lambda x: torch.clamp(x, min=-10, max=10)
         log_sigma = activate(log_sigma) #clip      in h_dim, out self.d (X.shape from dataframe.__init__())
 

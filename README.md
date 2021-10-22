@@ -67,15 +67,14 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  I recommend using docker or anaconda.
  
  Personally Recommend:
- 1. R is convenient in processing structured data, but is really slow for developing your own methods.
+ 1. R is convenient in processing structured data, but is really slow for developing my own methods.
     If using R, using Rcpp and developing the methods by C++ might be great.  
     Then use `apply` family to employ the function from Rcpp.  
     I use R in my thesis and the extending works.  
     I decide to use python since there are a lot of packages with different usage (relative or not relative to machine learning) in python.
  2. Recommend pytorch rather than tensorflow, if really want to use tf, I recommend tf2 rather than tf1. 
     The major reason is that the documentary of pytorch is really better than tensorflow...
-    However, keras provide some api to build model very fast. 
-    Keras is great for building models quickly.
+    However, Keras is great for building models quickly since it provides some convenient api. 
     
 `conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c conda-forge`  
 check `build_env.txt`
