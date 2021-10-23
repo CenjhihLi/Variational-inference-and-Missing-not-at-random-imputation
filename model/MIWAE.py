@@ -42,8 +42,6 @@ class MIWAE(nn.Module):
         self.out_activation = out_activation
         self.d = data_dim
         self.n_samples = torch.reshape(torch.tensor([n_samples]), (-1,)) # sample for latent variable 
-        self.z_dim = z_dim
-        self.h_dim = h_dim
         self.embedding_size = embedding_size
         self.code_size = code_size
         self.out_dist = out_dist
@@ -62,47 +60,47 @@ class MIWAE(nn.Module):
         
         if self.permutation_invariance:
             self.enc = nn.Sequential(
-                nn.Linear(self.code_size, self.h_dim),
-                nn.Linear(self.h_dim, self.h_dim))\
+                nn.Linear(self.code_size, h_dim),
+                nn.Linear(h_dim, h_dim))\
                 if self.activation is None else nn.Sequential(
-                nn.Linear(self.d, self.h_dim),
+                nn.Linear(self.d, h_dim),
                 self.activation(),
-                nn.Linear(self.h_dim, self.h_dim),
+                nn.Linear(h_dim, h_dim),
                 self.activation())
         else:
             self.enc = nn.Sequential(
-                nn.Linear(self.d, self.h_dim),
-                nn.Linear(self.h_dim, self.h_dim))\
+                nn.Linear(self.d, h_dim),
+                nn.Linear(h_dim, h_dim))\
                 if self.activation is None else nn.Sequential(
-                nn.Linear(self.d, self.h_dim),
+                nn.Linear(self.d, h_dim),
                 self.activation(),
-                nn.Linear(self.h_dim, self.h_dim),
+                nn.Linear(h_dim, h_dim),
                 self.activation())
-        self.fc_mu = nn.Linear(self.h_dim, self.z_dim) # Mean vector 
-        self.fc_sig = nn.Linear(self.h_dim, self.z_dim) # variance vector
+        self.fc_mu = nn.Linear(h_dim, z_dim) # Mean vector 
+        self.fc_sig = nn.Linear(h_dim, z_dim) # variance vector
         self.fc_dec = nn.Sequential(
-            nn.Linear(self.z_dim, self.h_dim),
-            nn.Linear(self.h_dim, self.h_dim)) \
+            nn.Linear(z_dim, h_dim),
+            nn.Linear(h_dim, h_dim)) \
             if self.out_activation is None else nn.Sequential(
-            nn.Linear(self.z_dim, self.h_dim),
+            nn.Linear(z_dim, h_dim),
             self.out_activation(),
-            nn.Linear(self.h_dim, self.h_dim),
+            nn.Linear(h_dim, h_dim),
             self.out_activation()) #for decoder
         
         self.fc_dec_ber = nn.Sequential(
-            nn.Linear(self.z_dim, self.h_dim),
-            nn.Linear(self.h_dim, self.h_dim)) \
+            nn.Linear(z_dim, h_dim),
+            nn.Linear(h_dim, h_dim)) \
             if self.out_activation is None else nn.Sequential(
-            nn.Linear(self.z_dim, self.h_dim),
+            nn.Linear(z_dim, h_dim),
             self.out_activation(),
-            nn.Linear(self.h_dim, self.h_dim),
+            nn.Linear(h_dim, h_dim),
             self.out_activation()) #for Bernoulli decoder
         
-        self.fc_dec_mu = nn.Linear(self.h_dim, self.d)
-        self.fc_dec_std = nn.Linear(self.h_dim, self.d)
-        self.fc_dec_log_sigma = nn.Linear(self.h_dim, self.d)
-        self.fc_dec_df = nn.Linear(self.h_dim, self.d)
-        self.fc_dec_logits = nn.Linear(self.h_dim, self.d) # prob = y + eps
+        self.fc_dec_mu = nn.Linear(h_dim, self.d)
+        self.fc_dec_std = nn.Linear(h_dim, self.d)
+        self.fc_dec_log_sigma = nn.Linear(h_dim, self.d)
+        self.fc_dec_df = nn.Linear(h_dim, self.d)
+        self.fc_dec_logits = nn.Linear(h_dim, self.d) # prob = y + eps
         self.emb = nn.Linear(self.embedding_size + 1,self.code_size)
         #self.init_weight()
 
@@ -166,24 +164,21 @@ class MIWAE(nn.Module):
         if self.out_dist in ['gauss', 'normal']:
             mu, std = self._gauss_decoder(z)
             # p(x|z)
-            self.p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
-            self.l_out_mu = mu
-            l_out_sample = self.p_x_given_z.sample()
+            p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
+            l_out_sample = p_x_given_z.sample()
 
         elif self.out_dist in ['t', 't-distribution']:
             mu, log_sig, df = self._t_decoder(z)
             # p(x|z)
-            self.p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
+            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
                                                   df=3 + torch.nn.softplus(df))
-            self.l_out_mu = mu
-            l_out_sample = self.p_x_given_z.sample()
+            l_out_sample = p_x_given_z.sample()
 
         elif self.out_dist == 'Bernoulli':
             logits = self._bernoulli_decoder(z)
             # p(x|z)
-            self.p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
-            self.l_out_mu = F.sigmoid(logits) # TODO: logits?
-            l_out_sample = self.p_x_given_z.sample()
+            p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
+            l_out_sample = p_x_given_z.sample()
         return l_out_sample
 
     def forward(self, x):
@@ -208,55 +203,55 @@ class MIWAE(nn.Module):
 
         outdic=dict()
         # encoder
-        self.q_mu, self.q_log_sig = self.encoder(input_tensor)
-        outdic['q_mu'], outdic['q_log_sig'] = self.q_mu, self.q_log_sig
+        q_mu, q_log_sig = self.encoder(input_tensor)
+        outdic['q_mu'], outdic['q_log_sig'] = q_mu, q_log_sig
 
         # sample latent values
-        q_z, self.l_z = self.reparameterize(self.q_mu, self.q_log_sig)
+        q_z, l_z = self.reparameterize(q_mu, q_log_sig)
 
         """
-        VAE stucture only need: l_out_sample = self.decoder(self.l_z)
+        VAE stucture only need: l_out_sample = self.decoder(l_z)
         but I compute some complicated term for MIWAE_ELBO in the following
         """
         # parameters from decoder
-        # self.l_z: shape [n_samples, batch_size, d] 
-        self.l_z = self.l_z.permute(1, 0, 2)  # shape [batch_size, n_samples, d]
+        # l_z: shape [n_samples, batch_size, d] 
+        l_z = l_z.permute(1, 0, 2)  # shape [batch_size, n_samples, d]
         if self.out_dist in ['gauss', 'normal']:
-            mu, std = self._gauss_decoder(self.l_z)
+            mu, std = self._gauss_decoder(l_z)
             # p(x|z)
-            self.p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
+            p_x_given_z = pdfun.normal.Normal(loc=mu, scale=std)
             self.l_out_mu = mu
-            l_out_sample = self.p_x_given_z.sample()
+            l_out_sample = p_x_given_z.sample()
 
         elif self.out_dist in ['t', 't-distribution']:
-            mu, log_sig, df = self._t_decoder(self.l_z)
+            mu, log_sig, df = self._t_decoder(l_z)
             # p(x|z)
-            self.p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
+            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
                                                   df=3 + torch.nn.softplus(df))
             self.l_out_mu = mu
-            l_out_sample = self.p_x_given_z.sample()
+            l_out_sample = p_x_given_z.sample()
 
         elif self.out_dist == 'Bernoulli':
-            logits = self._bernoulli_decoder(self.l_z)
+            logits = self._bernoulli_decoder(l_z)
             outdic['logits'] = logits
             # p(x|z)
-            self.p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
+            p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
             self.l_out_mu = F.sigmoid(logits) # TODO: logits?
-            l_out_sample = self.p_x_given_z.sample()
+            l_out_sample = p_x_given_z.sample()
     
         # q_z is from self.reparameterize
         # q_z_expand is after unsqueeze (n_sample dim)
         # can also input q_z into MIWAE_ELBO and compute inside loss function, but I compute here
         q_z_expand = pdfun.normal.Normal(loc=torch.unsqueeze(q_z.loc, 1), scale=torch.unsqueeze(q_z.scale, 1))
-        self.log_q_z_given_x = torch.sum(q_z_expand.log_prob(self.l_z), -1) #evaluate the z-samples in q(z|x)
+        log_q_z_given_x = torch.sum(q_z_expand.log_prob(l_z), -1) #evaluate the z-samples in q(z|x)
 
         # log_p_x_given_z is depend on outdist 
         # computing here might be more convenient than computing in trainer
-        self.log_p_x_given_z = torch.sum(
-                torch.unsqueeze(m, 1) * self.p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
+        log_p_x_given_z = torch.sum(
+                torch.unsqueeze(m, 1) * p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
                 #shape [batch, 1, self.d]   [batch, 1, self.d]
-        self.log_p_z = torch.sum(self.latent_prior.log_prob(self.l_z), -1) #evaluate the z-samples in the prior
-        outdic['lpxz'], outdic['lqzx'], outdic['lpz'] = self.log_p_x_given_z, self.log_q_z_given_x, self.log_p_z
+        log_p_z = torch.sum(self.latent_prior.log_prob(l_z), -1) #evaluate the z-samples in the prior
+        outdic['lpxz'], outdic['lqzx'], outdic['lpz'] = log_p_x_given_z, log_q_z_given_x, log_p_z
         return outdic, q_z, l_out_sample 
         # l_out_sample is sample from p_x_given_z in decoder
         # z is sample from q_z, then obtain the ouput l_out_sample by decode(z)
