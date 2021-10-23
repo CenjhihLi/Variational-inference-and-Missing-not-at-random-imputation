@@ -48,10 +48,10 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
    
  other methods:  
  `from sklearn.impute import SimpleImputer, MissingIndicator, KNNImputer, IterativeImputer`  
-  MICE: https://www.jstatsoft.org/article/view/v045i03 (jornal of statistical software, 2011, original paper 2000)  
+  MICE: https://www.jstatsoft.org/article/view/v045i03 (journal of statistical software, 2011, original paper 2000)  
  `Impute (Gibbs sampling) then regress, apply different methods to the regression step to deal with different kind of data.`  
  MissForest: https://doi.org/10.1093/bioinformatics/btr597 (Bioinformatics, 2012)  
- `allow mix type of variables` This is similar to MICE. Replace the regression model to random forest.  
+ `allow mix type of variables` This is similar to MICE. Replace the regression model with random forest.  
 
  `from sklearn.ensemble import RandomForestRegressor, IterativeImputer(estimator = RandomForestRegressor)`  
 
