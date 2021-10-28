@@ -70,8 +70,9 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  
  Personally Recommend:  
  1. R is convenient in processing structured data but is really slow for developing my own methods.  
-    If using R, using Rcpp and developing the methods by C++ might be great.  
-    Then use the `apply` family to employ the function from Rcpp.  
+    If using R, using `Rcpp` and developing the methods by C++ might be great.  
+    In addition, the `apply` family is great for applying functions to dataframe and list.  
+    These are significantly faster than writing loop in R.      
     I use R in my thesis and the extending works.  
     I decide to use Python since there are a lot of packages with different usage (relevant or not relevant to machine learning) in python. 
  2. Recommend PyTorch rather than TensorFlow.  
