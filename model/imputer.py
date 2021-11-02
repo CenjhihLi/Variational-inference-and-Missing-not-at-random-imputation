@@ -51,10 +51,10 @@ class imputer(object):
         #Xrec = self.imp.transform(X)
         #np.sqrt(np.sum((Xtrain - Xrec) ** 2 * (1 - M)) / np.sum(1 - M))) 
     
-    def getParlist(self):
+    def get_Parlist(self):
         return self._parmap
 
-    def getParvalue(self):
+    def get_Parvalue(self):
         out = dict()
         for _ in self._pardict:
             for key in self._pardict[_]:
@@ -69,3 +69,4 @@ class imputer(object):
                 self._pardict[self._parmap[key]][key]=value
             else:
                 print('{} is not a parameter.'.format(key))
+    

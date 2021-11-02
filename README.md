@@ -14,7 +14,7 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
 
 # Some works before this.
  The topic of my Master's thesis is developing methods for handling missing values in online user-generated product reviews (UGPR). (I focused on missing X but not Y)  
- I tried to develop an imputation model to deal with missing not at random (MNAR) data. I analyzed the observed values themselves and tried to impute data from similar observations. `All variables in X can be MNAR`  
+ I tried to develop an imputation model to deal with missing not at random (MNAR) data. I analyzed the observed values themselves and tried to impute data from similar observations. (All variables in X can be MNAR)  
 
  After graduation, it came to my mind that I should try some latent variable ideas.
  Instead of modeling missing pattern as many MNAR methods, I assumed the MNAR itself as a latent variable since we assumed that the dataset must contain MAR and MNAR observations. Actually the latent variable represents `if an observation follows the MNAR mechanism`  

@@ -85,6 +85,18 @@ class VAEtrainer(object):
         # KLD = 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
         KLD = -0.5 * torch.sum(1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig))
         return BCE + KLD
+    
+    def imputation(self, m, x):
+        """
+        x: Xz[np.isnan(Xnan)] = 0
+        """
+        outdic, q_z, l_out_sample  = self.model(x)
+        lpxz, lqzx, lpz = outdic['lpxz'], outdic['lqzx'], outdic['lpz'] 
+        l_w = lpxz + lpz - lqzx # importance weights in the paper eq(4) 
+        wl = F.softmax(l_w, dim = 1) #TODO: check
+        xm = np.sum((l_out_sample.T * wl.T).T, axis=1)
+        xmix = x + xm * (1 - m)
+        return l_out_sample, wl, xm, xmix
 
     def _batch_train(self, epoch):
         self.model.train()
@@ -115,7 +127,7 @@ class VAEtrainer(object):
         print('====> Epoch: {} Average loss: {:.4f}'.format(
             epoch, train_loss / len(self.train_loader.dataset)))
 
-    def _batch_val(self, epoch):
+    def evaluation(self):
         self.model.eval()
         val_loss = 0
         with torch.no_grad():
@@ -137,7 +149,7 @@ class VAEtrainer(object):
     def train(self, max_epochs):
         for epoch in range(1, max_epochs + 1):
             self._batch_train(epoch)
-            self._batch_val(epoch)
+            self.evaluation()
 
 class GANtrainer(object):
     def __init__(self, Generator, Discriminator):
@@ -152,10 +164,45 @@ class GANtrainer(object):
     def BCE_loss(self, d_indicator, indicator):
         return nn.BCEWithLogitsLoss(reduction="elementwise_mean")(d_indicator, indicator)
 
-    def Gen_loss(self, alpha, indicator, d_indicator, gen_x, x):
+    def gen_loss(self, alpha, indicator, d_indicator, gen_x, x):
         G_loss1 = ((1 - indicator) * (torch.sigmoid(d_indicator)+1e-8).log()).mean()/(1-indicator).sum()
         G_mse_loss = nn.MSELoss(reduction="elementwise_mean")(indicator*x, indicator*gen_x) / indicator.sum()
         G_loss = G_loss1 + alpha*G_mse_loss
         return G_loss
+
+    def _train_dis(self, x, z, m, h):
+        G_sample = self.gen(x, z, m)
+        d_indicator = self.dis(x, m, G_sample, h)
+        BCE_loss = self.BCE_loss(d_indicator, m)
+        BCE_loss.backward()
+        self.dis_optimizer.step()
+        self.dis_optimizer.zero_grad()
+        return BCE_loss
+    
+    def _train_gen(self, x, z, m, h, alpha):
+        G_sample = self.gen(x, z, m)
+        d_indicator = self.dis(x, m, G_sample, h)
+        d_indicator.detach_()
+        G_loss = self.gen_loss(alpha, m, d_indicator, G_sample, x)
+        G_loss.backward()
+        self.gen_optimizer.step()
+        self.gen_optimizer.zero_grad()
+        G_mse = nn.MSELoss(reduction="elementwise_mean")((1-m)*x, (1-m)*G_sample) / (1-m).sum()
+        return G_mse
+    
+    def evaluation(self):
+        pass
+
+    def train(self, max_epochs):
+        self.train_loader = ...
+        for epoch in range(1, max_epochs + 1):
+            BCE_loss = self._train_dis(x, z, m, h)
+            G_mse = self._train_gen(x, z, m, h, alpha)
+            if epoch % 100 == 0:
+                print('====> Epoch: {} BCE_loss of discriminator: {:.4f} MSE of generator: {:.4f}'.format(
+                    epoch, BCE_loss / len(self.train_loader.dataset), G_mse / len(self.train_loader.dataset)))
+            self.evaluation()
+
+        
 
         
