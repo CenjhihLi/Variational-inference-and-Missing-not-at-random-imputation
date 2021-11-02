@@ -57,6 +57,16 @@ class VAEtrainer(object):
         # .shape[]
         return torch.sum(log_avg_weight, -1)
 
+    def notMIWAE_ELBO(self, outdic, indic = None):
+        # the not-MIWAE ELBO 
+        lpxz, lpmz, lqzx, lpz = outdic['lpxz'], outdic['lpmz'], outdic['lqzx'], outdic['lpz'] 
+        n_samples = torch.tensor([lpxz.shape[1]])
+        l_w = lpxz + lpmz + lpz - lqzx # ---- importance weights
+        log_sum_w = torch.logsumexp(l_w, dim=1)
+        log_avg_weight = log_sum_w - torch.log(x = n_samples.type(torch.FloatTensor))
+        # ---- average over minibatch to get the average llh
+        return torch.sum(log_avg_weight, -1)
+
     def gauss_loss(self, outdic, indic):
         x = indic['x']
         m = np.array(np.isnan(x), dtype=np.float32)
@@ -109,6 +119,11 @@ class VAEtrainer(object):
             #but in MIWAE, z is sample from p_x_given_z
             if self.model.loss=='MIWAE_ELBO':
                 loss = - self.MIWAE_ELBO(outdic)
+            elif self.model.loss=='notMIWAE_ELBO':
+                if self.model.testing:
+                    loss = - self.MIWAE_ELBO(outdic)
+                else:
+                    loss = - self.notMIWAE_ELBO(outdic)
             elif self.model.loss=='VAE_loss':
                 indic = {
                     'x': data,

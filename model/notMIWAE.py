@@ -4,15 +4,16 @@ import torch.nn as nn
 import torch.distributions as pdfun
 import torch.nn.functional as F
 from torch.autograd import Variable
+from torchvision.utils import save_image
 
 """
 Find a data from here
 https://archive.ics.uci.edu/ml/datasets.php
 """
-class MIWAE(nn.Module):
+class notMIWAE(nn.Module):
     """
     Original paper
-    http://proceedings.mlr.press/v97/mattei19a/mattei19a.pdf
+    https://arxiv.org/pdf/2006.12871.pdf
     """
     def __init__(self, data_dim,
                 z_dim=50, h_dim=100, n_samples=1,
@@ -24,6 +25,7 @@ class MIWAE(nn.Module):
                 permutation_invariance=False,
                 embedding_size=20,
                 code_size=20, 
+                missing_process='selfmask',
                 # TODO: the input dim should consider this, 
                 #    or this should be same as the data_dim
                 #I think is the first one    #paper does not mension embedding
@@ -36,8 +38,10 @@ class MIWAE(nn.Module):
         """
         if out_dist not in ['gauss', 'normal', 'Bernoulli', 't', 't-distribution']:
             raise ValueError("Only allow 'gauss', 'normal', or 'Bernoulli' as out_dist")
-        super(MIWAE, self).__init__()
-        self.loss = 'MIWAE_ELBO'
+        if missing_process not in ['selfmasking', 'selfmasking_known', 'linear', 'nonlinear']:
+            raise ValueError("Only allow 'selfmasking', 'selfmasking_known', 'linear' or 'nonlinear' as 'missing_process'")
+        super(notMIWAE, self).__init__()
+        self.loss = 'notMIWAE_ELBO'
         self.activation = activation
         self.out_activation = out_activation
         self.d = data_dim
@@ -47,6 +51,7 @@ class MIWAE(nn.Module):
         self.out_dist = out_dist
         self.latent_prior = latent_prior
         self.testing = testing
+        self.missing_process = missing_process
         self.learnable_imputation=learnable_imputation
         self.permutation_invariance=permutation_invariance
         if imp is None:
@@ -103,8 +108,18 @@ class MIWAE(nn.Module):
         self.fc_dec_df = nn.Linear(h_dim, self.d)
 
         self.fc_dec_logits = nn.Linear(h_dim, self.d) # prob = y + eps
+
         self.emb = nn.Linear(self.embedding_size + 1,self.code_size) #for embedding
         self.E = Variable(torch.randn(self.d, self.embedding_size))  #for embedding
+
+        self.mis_procs_linear = nn.Linear(self.d, self.d) #for missing_process
+        self.mis_procs_nonlinear = nn.Sequential(
+            nn.Linear(self.d, h_dim),
+            F.tanh(),
+            nn.Linear(h_dim, self.d))#for missing_process
+        self.W = Variable(torch.randn(1, 1, self.d))  #for missing_process
+        self.b = Variable(torch.randn(1, 1, self.d))  #for missing_process
+
         self.init_weight()
 
     def init_weight(self):
@@ -149,6 +164,26 @@ class MIWAE(nn.Module):
     def _bernoulli_decoder(self, z):
         z = self.fc_dec_ber(z) #in z_dim, out h_dim
         logits = self.fc_dec_logits(z) 
+        return logits
+    
+    def _bernoulli_missing_process(self, z):
+        if self.missing_process == 'selfmasking':
+            logits = - self.W * (z - self.b)
+
+        elif self.missing_process == 'selfmasking_known':
+            logits = - F.softplus(self.W) * (z - self.b)
+
+        elif self.missing_process == 'linear':
+            logits = self.mis_procs_linear(z)
+
+        elif self.missing_process == 'nonlinear':
+            logits = self.mis_procs_nonlinear(z)
+
+        else:
+            print("use 'selfmasking', 'selfmasking_known', 'linear' or 'nonlinear' as 'missing_process'")
+            logits = None
+
+        # ---- return logits since it goes better with tfp bernoulli
         return logits
     
     def decoder(self, z): 
@@ -236,7 +271,19 @@ class MIWAE(nn.Module):
             p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
             self.l_out_mu = F.sigmoid(logits) # TODO: logits?
             l_out_sample = p_x_given_z.sample()
-    
+
+        # missing process
+        # mix x_o with samples of x_m
+        l_out_mixed = l_out_sample * torch.unsqueeze(1 - m, 1) + torch.unsqueeze(x * m, 1)
+        logits_miss = self._bernoulli_missing_process(l_out_mixed)
+
+        # p(m|x)
+        p_s_given_x = pdfun.bernoulli.Bernoulli(logits=logits_miss)  # (probs=m + eps)
+
+        # evaluate m in p(m|x)
+        log_p_m_given_x = torch.sum(p_s_given_x.log_prob(torch.unsqueeze(m, 1)), -1)
+        # missing process end
+
         # q_z is from self.reparameterize
         # q_z_expand is after unsqueeze (n_sample dim)
         # can also input q_z into MIWAE_ELBO and compute inside loss function, but I compute here
@@ -249,7 +296,7 @@ class MIWAE(nn.Module):
                 torch.unsqueeze(m, 1) * p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
                 #shape [batch, 1, self.d]   [batch, 1, self.d]
         log_p_z = torch.sum(self.latent_prior.log_prob(l_z), -1) #evaluate the z-samples in the prior
-        outdic['lpxz'], outdic['lqzx'], outdic['lpz'] = log_p_x_given_z, log_q_z_given_x, log_p_z
+        outdic['lpxz'], outdic['lpmz'], outdic['lqzx'], outdic['lpz'] = log_p_x_given_z, log_p_m_given_x, log_q_z_given_x, log_p_z
         return outdic, q_z, l_out_sample 
         # l_out_sample is sample from p_x_given_z in decoder
         # z is sample from q_z, then obtain the ouput l_out_sample by decode(z)
@@ -278,4 +325,3 @@ class MIWAE(nn.Module):
         self.g = torch.sum(self.hz, 1)  # sum feature dim  self.d   [ _, self.d, self.code_size]
         print("g", self.g.shape)
         return self.g 
-        
