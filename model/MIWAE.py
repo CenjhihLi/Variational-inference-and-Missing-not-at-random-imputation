@@ -96,25 +96,29 @@ class MIWAE(nn.Module):
             nn.Linear(h_dim, h_dim),
             self.out_activation()) #for Bernoulli decoder
         
-        self.fc_dec_mu = nn.Linear(h_dim, self.d)
+        self.fc_dec_mu_gauss = nn.Linear(h_dim, self.d)
         self.fc_dec_std = nn.Linear(h_dim, self.d)
+
+        self.fc_dec_mu_t = nn.Linear(h_dim, self.d)
         self.fc_dec_log_sigma = nn.Linear(h_dim, self.d)
         self.fc_dec_df = nn.Linear(h_dim, self.d)
+
         self.fc_dec_logits = nn.Linear(h_dim, self.d) # prob = y + eps
         self.emb = nn.Linear(self.embedding_size + 1,self.code_size)
-        #self.init_weight()
+        self.init_weight()
 
     def init_weight(self):
-        layers = [self.enc, self.fc_mu, self.fc_sig, self.fc_dec, self.fc_dec_ber, #self.fc_dec_mu,
-            self.fc_dec_std, self.fc_dec_df, self.fc_dec_logits, self.emb]
-        [nn.init.xavier_normal_(layer.weight) for layer in layers]
+        #layers = [self.enc, self.fc_mu, self.fc_sig, self.fc_dec, self.fc_dec_ber, self.fc_dec_mu_gauss,
+        #    self.fc_dec_std, self.fc_dec_df, self.fc_dec_logits, self.emb]
+        #[nn.init.xavier_normal_(layer.weight) for layer in layers]
+        layers = [self.fc_dec_mu_t, self.fc_dec_log_sigma, self.fc_dec_df]
+        [nn.init.orthogonal_(layer.weight) for layer in layers]
 
     def encoder(self, x):
         h = self.enc(x) #in self.d, out h_dim
         q_mu = self.fc_mu(h) #in h_dim, out z_dim
         q_log_sig = self.fc_sig(h) #in h_dim, out z_dim
-        activate = lambda x: torch.clamp(x, min=-10, max=10)
-        q_log_sig = activate(q_log_sig) #clip
+        q_log_sig = torch.clamp(q_log_sig, min=-10., max=10.) #clip
         return q_mu, q_log_sig
 
     #randomize latent vector
@@ -126,7 +130,7 @@ class MIWAE(nn.Module):
 
     def _gauss_decoder(self, z):
         z = self.fc_dec(z) #in z_dim, out h_dim
-        mu = self.fc_dec_mu(z) if self.out_activation is None else self.out_activation(self.fc_dec_mu(z)) 
+        mu = self.fc_dec_mu_gauss(z) if self.out_activation is None else self.out_activation(self.fc_dec_mu(z)) 
         #nn.init.xavier_normal_(mu.weight)
         #in h_dim, out self.d (X.shape from dataframe.__init__())
         std = F.softplus(self.fc_dec_std(z)) #in h_dim, out self.d (X.shape from dataframe.__init__())
@@ -134,18 +138,12 @@ class MIWAE(nn.Module):
     
     def _t_decoder(self, z):
         z = self.fc_dec(z) #in z_dim, out h_dim
-        
-        mu = self.fc_dec_mu(z) 
-        nn.init.orthogonal_(mu.weight)
+        mu = self.fc_dec_mu_t(z) 
         mu = mu if self.out_activation is None else self.out_activation(mu)
         #in h_dim, out self.d (X.shape from dataframe.__init__())
         log_sigma = self.fc_dec_log_sigma(z) 
-        nn.init.orthogonal_(log_sigma.weight)
-        activate = lambda x: torch.clamp(x, min=-10, max=10)
-        log_sigma = activate(log_sigma) #clip      in h_dim, out self.d (X.shape from dataframe.__init__())
-
+        log_sigma = torch.clamp(log_sigma, min=-10., max=10.) #clip      in h_dim, out self.d (X.shape from dataframe.__init__())
         df = self.fc_dec_df(z) #in h_dim, out self.d (X.shape from dataframe.__init__())
-        nn.init.orthogonal_(df.weights)
         return mu, log_sigma, df
     
     def _bernoulli_decoder(self, z):

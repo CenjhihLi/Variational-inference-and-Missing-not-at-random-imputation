@@ -86,7 +86,7 @@ class VAEtrainer(object):
         KLD = -0.5 * torch.sum(1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig))
         return BCE + KLD
     
-    def imputation(self, m, x):
+    def imputation(self, x, m):
         """
         x: Xz[np.isnan(Xnan)] = 0
         """
@@ -108,7 +108,7 @@ class VAEtrainer(object):
             #in VAE, z is sample from q_z, then obtain the ouput recon_x by decode(z)
             #but in MIWAE, z is sample from p_x_given_z
             if self.model.loss=='MIWAE_ELBO':
-                loss = self.MIWAE_ELBO(outdic)
+                loss = - self.MIWAE_ELBO(outdic)
             elif self.model.loss=='VAE_loss':
                 indic = {
                     'x': data,
