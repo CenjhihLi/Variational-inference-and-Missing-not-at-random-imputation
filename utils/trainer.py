@@ -217,7 +217,3 @@ class GANtrainer(object):
                 print('====> Epoch: {} BCE_loss of discriminator: {:.4f} MSE of generator: {:.4f}'.format(
                     epoch, BCE_loss / len(self.train_loader.dataset), G_mse / len(self.train_loader.dataset)))
             self.evaluation()
-
-        
-
-        

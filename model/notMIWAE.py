@@ -244,7 +244,13 @@ class notMIWAE(nn.Module):
 
         """
         VAE stucture only need: l_out_sample = self.decoder(l_z)
-        but I compute some complicated term for MIWAE_ELBO in the following
+        the forward should end up here. 
+        But I compute some complicated term for notMIWAE_ELBO in the following
+        since if I use self.decoder in the trainer and get the loss 
+        z = z.permute(1, 0, 2) and logits = self._bernoulli_decoder(z) will operate twice
+        TODO: ##########################################################################
+        TODO: find some way to split the function and avoid double computing anything
+        TODO: ##########################################################################
         """
         # parameters from decoder
         # l_z: shape [n_samples, batch_size, d] 
