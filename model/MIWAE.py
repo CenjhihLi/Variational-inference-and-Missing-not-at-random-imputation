@@ -240,7 +240,7 @@ class MIWAE(nn.Module):
             outdic['logits'] = logits
             # p(x|z)
             p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
-            self.l_out_mu = F.sigmoid(logits) # TODO: logits?
+            self.l_out_mu = torch.sigmoid(logits) # TODO: logits?
             l_out_sample = p_x_given_z.sample()
     
         # q_z is from self.reparameterize

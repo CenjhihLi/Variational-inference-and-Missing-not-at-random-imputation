@@ -5,6 +5,7 @@ import argparse
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import os
 from torchvision import transforms
 from torchvision.utils import save_image
 
@@ -13,7 +14,6 @@ from model.imputer import imputer
 from utils.dataframe import dataframe, UCIDatasets
 from utils.trainer import trainer
 from utils.experiment import *
-
 """
 Find a data from here
 https://archive.ics.uci.edu/ml/datasets.php
@@ -33,6 +33,7 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 parser.add_argument('--data', type=str, default='whitewine', metavar='N',
                     help='which dataset from UCI would you like to use?')
 args = parser.parse_args()
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 random.seed(args.seed)
@@ -53,5 +54,5 @@ def main():
 #            sample = model.decode(sample).cpu()
     pass
 
-#if __name__ == "__main__":
-#    main()
+if __name__ == "__main__":
+    main()

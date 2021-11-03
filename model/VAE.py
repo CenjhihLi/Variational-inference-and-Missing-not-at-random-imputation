@@ -26,7 +26,7 @@ class VAE(nn.Module):
 
     def decoder(self, z):
         h3 = F.relu(self.fc3(z))
-        return F.sigmoid(self.fc4(h3))
+        return torch.sigmoid(self.fc4(h3))
     
     #randomize latent vector
     def reparameterize(self, mu, q_log_sig):
@@ -39,5 +39,5 @@ class VAE(nn.Module):
         q_mu, q_log_sig = self.encoder(torch.reshape(x, (-1, self.input_dim)))
         outdic['q_mu'], outdic['q_log_sig'] = q_mu, q_log_sig
                 # logvar to std
-        q_z, z = self.reparameterize(q_mu, q_log_sig)     # create a torch distribu,   sample with reparameterizationtion
+        q_z, z = self.reparameterize(q_mu, q_log_sig)     # create a torch distribution,   sample with reparameterization
         return outdic, q_z, self.decoder(z)   # z is sample from q_z, then obtain the ouput recon_x by decode(z)

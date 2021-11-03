@@ -1,4 +1,7 @@
 import numpy as np
+import os
+import gc
+import pathlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,18 +19,26 @@ Find a data from here
 https://archive.ics.uci.edu/ml/datasets.php
 """
 
-class VAEtrainer(object):
-    def __init__(self, model, train_loader, test_loader, batch_size = 16, log_interval = 10):
+class VAE_trainer(object):
+    def __init__(self, model, train_loader, test_loader, batch_size = 16, log_interval = 10, 
+                check_point = './experiments/Demo/VAE_ckpt.pth', 
+                expr_file = './experiments/Demo/VAE.npz', 
+                start_epoch = 1, history = [], 
+                optim_kwargs = {'lr': 0.001, 'betas': (0.9, 0.999), 'eps': 1e-08 }):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.eps = torch.finfo(float).eps #a small epsilon value
         self.model = model #input a model after initialize
         self.model.to(self.device)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08)
+        self.optimizer = optim.Adam(self.model.parameters(), **optim_kwargs)
 
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.batch_size = batch_size
         self.log_interval = log_interval
+        self.check_point = check_point
+        self.expr_file = expr_file
+        self.start_epoch = start_epoch
+        self.history = history
 
         self.criterion = nn.CrossEntropyLoss()
         self.transform = transforms.Compose(
@@ -36,6 +47,10 @@ class VAEtrainer(object):
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
         )
+        if self.start_epoch>1:
+            checkpoint = torch.load(self.check_point)   
+            self.model.load_state_dict(checkpoint['net'])   
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
 
     def model_summary(self, forward_input = 1, dim = 10):
         if forward_input == 1:
@@ -61,7 +76,7 @@ class VAEtrainer(object):
         # the not-MIWAE ELBO 
         lpxz, lpmz, lqzx, lpz = outdic['lpxz'], outdic['lpmz'], outdic['lqzx'], outdic['lpz'] 
         n_samples = torch.tensor([lpxz.shape[1]])
-        l_w = lpxz + lpmz + lpz - lqzx # ---- importance weights
+        l_w = lpxz + lpmz + lpz - lqzx # importance weights in the paper eq(7)(8) 
         log_sum_w = torch.logsumexp(l_w, dim=1)
         log_avg_weight = log_sum_w - torch.log(x = n_samples.type(torch.FloatTensor))
         # ---- average over minibatch to get the average llh
@@ -73,7 +88,7 @@ class VAEtrainer(object):
         mu, log_sig = outdic['q_mu'], outdic['q_log_sig']
         #p(x | z) with Gauss z
         p_x_given_z = - (np.log(2 * np.pi) + log_sig + torch.square(x - mu) / (torch.exp(log_sig) + self.eps))/2.
-        return torch.sum(p_x_given_z * m, -1)  # sum over d-dimension
+        return torch.sum(p_x_given_z * m, -1)  # sum over d-dimension 
 
     def bernoulli_loss(self, outdic, indic):
         x = indic['x']
@@ -91,6 +106,7 @@ class VAEtrainer(object):
     def VAE_loss(self, outdic, indic):
         recon_x, x = indic['recon_x'], indic['x']
         q_mu, q_log_sig = outdic['q_mu'], outdic['q_log_sig']
+        # BCE = -wi (yi logxi + (1-yi)log(1-xi) )
         BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
         # KLD = 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
         KLD = -0.5 * torch.sum(1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig))
@@ -138,9 +154,11 @@ class VAEtrainer(object):
                     epoch, batch_idx * len(data), len(self.train_loader.dataset),
                     100. * batch_idx / len(self.train_loader),
                     loss.item() / len(data)))
-                    
+
+        train_loss /= len(self.train_loader.dataset)    
         print('====> Epoch: {} Average loss: {:.4f}'.format(
-            epoch, train_loss / len(self.train_loader.dataset)))
+            epoch, train_loss))
+        return train_loss 
 
     def evaluation(self):
         self.model.eval()
@@ -151,6 +169,11 @@ class VAEtrainer(object):
                 outdic, q_z, out_sample = self.model(data)
                 if self.model.loss=='MIWAE_ELBO':
                     val_loss += self.MIWAE_ELBO(outdic)
+                elif self.model.loss=='notMIWAE_ELBO':
+                    if self.model.testing:
+                        val_loss = - self.MIWAE_ELBO(outdic)
+                    else:
+                        val_loss = - self.notMIWAE_ELBO(outdic)
                 elif self.model.loss=='VAE_loss':
                     indic = {
                         'x': data,
@@ -160,21 +183,43 @@ class VAEtrainer(object):
 
         val_loss /= len(self.test_loader.dataset)
         print('====> Test set loss: {:.4f}'.format(val_loss))
+        return val_loss
     
-    def train(self, max_epochs):
-        for epoch in range(1, max_epochs + 1):
-            self._batch_train(epoch)
-            self.evaluation()
+    def train(self, max_epochs):        
+        for epoch in range(self.start_epoch, max_epochs + 1):
+            train_loss = self._batch_train(epoch)
+            val_loss = self.evaluation()
+            self.history.append([train_loss.item(), val_loss.item()])
+            if epoch % 50 == 0:
+                """
+                save file:
+                history-> [loss, accuracy] 
+                checkpoint-> model
+                """
+                checkpoint = {
+                    'net': self.model.state_dict(),
+                    'optimizer':self.optimizer.state_dict(),
+                    }
+                torch.save(checkpoint, self.check_point)
+                np.savez(self.expr_file,  history=self.history)
 
-class GANtrainer(object):
-    def __init__(self, Generator, Discriminator):
+class GAN_trainer(object):
+    def __init__(self, Generator, Discriminator, log_interval = 10,
+                check_point = './experiments/exp_imputation/GAIN_ckpt.pth', 
+                expr_file = './experiments/exp_imputation/GAIN.npz', 
+                start_epoch = 1, history = [], 
+                optim_kwargs = {'lr': 0.001, 'betas': (0.9, 0.999), 'eps': 1e-08 }):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.gen = Generator
         self.gen.to(self.device)
-        self.gen_optimizer = optim.Adam(self.gen.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08)
+        self.gen_optimizer = optim.Adam(self.gen.parameters(), **optim_kwargs)
         self.dis = Discriminator 
         self.dis.to(self.device)       
-        self.dis_optimizer = optim.Adam(self.dis.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08)
+        self.dis_optimizer = optim.Adam(self.dis.parameters(), **optim_kwargs)
+        self.log_interval = log_interval
+        self.expr_file = expr_file
+        self.start_epoch = start_epoch
+        self.history = history
     
     def BCE_loss(self, d_indicator, indicator):
         return nn.BCEWithLogitsLoss(reduction="elementwise_mean")(d_indicator, indicator)
@@ -213,7 +258,22 @@ class GANtrainer(object):
         for epoch in range(1, max_epochs + 1):
             BCE_loss = self._train_dis(x, z, m, h)
             G_mse = self._train_gen(x, z, m, h, alpha)
-            if epoch % 100 == 0:
+            self.evaluation()
+            #self.history.append([train_loss, val_loss])
+            if epoch % self.log_interval == 0:
                 print('====> Epoch: {} BCE_loss of discriminator: {:.4f} MSE of generator: {:.4f}'.format(
                     epoch, BCE_loss / len(self.train_loader.dataset), G_mse / len(self.train_loader.dataset)))
-            self.evaluation()
+            if epoch % 50 == 0:
+                """
+                save file:
+                history-> [loss, accuracy] 
+                checkpoint-> model
+                """
+                checkpoint = {
+                    'gen_net': self.gen.state_dict(),
+                    'gen_optimizer':self.gen_optimizer.state_dict(),
+                    'dis_net': self.dis.state_dict(),
+                    'dis_optimizer':self.dis_optimizer.state_dict(),
+                    }
+                torch.save(checkpoint, self.check_point)
+                np.savez(self.expr_file,  history=self.history)
