@@ -20,10 +20,10 @@ from utils.utils import RMSE
 
 def fs_setup(experiment_name, seed, config, project_dir = "."):
     """
-    Setup the experiments fold and use config.json to record 
-    the parameters of experiment
-    This will use in run_experiment
-    very useful since the experiment always stop...
+    Setup the experiments folder
+    use config.json to record the parameters of experiment 
+    store the model parameters in this folder so that I don't need to restart training
+    Very useful since the experiment always stop because of many reasons...
     """
     exp_root_dir = pathlib.Path(project_dir) / f'experiments' / experiment_name
     config_path = exp_root_dir / f'config.json'
@@ -42,9 +42,9 @@ def fs_setup(experiment_name, seed, config, project_dir = "."):
         with config_path.open(mode='w') as f:
             json.dump(config, f, sort_keys=True, indent=2)
           
-    #experiment_dir = exp_root_dir/f'seed_{seed}'
-    #experiment_dir.mkdir(parents=True, exist_ok=True)
-    return exp_root_dir
+    experiment_dir = exp_root_dir/f'results_seed_{seed}'
+    experiment_dir.mkdir(parents=True, exist_ok=True)
+    return experiment_dir
 
 def check_training_file(expr_file):
     output = dict()
@@ -80,10 +80,11 @@ def exp_imputation(experiment_name, model_list, config, num_of_epoch, CUDA_VISIB
         Xz[np.isnan(Xnan)] = 0
 
         return Xnan, Xz
+
     exp_kwargs, optim_kwargs, MIWAE_kwargs, notMIWAE_kwargs, data_kwargs, imputer_par = \
         config['exp_kwargs'], config['optim_kwargs'], config['MIWAE_kwargs'], \
         config['notMIWAE_kwargs'], config['data_kwargs'], config['imputer_par']
-    dataset, runs, seed = exp_kwargs['dataset'], exp_kwargs['runs'], exp_kwargs['seed']
+    dataset, runs, seed, impute_sample = exp_kwargs['dataset'], exp_kwargs['runs'], exp_kwargs['seed'], exp_kwargs['impute_sample']
 
     #experiment_name = 'exp_imputation'
     experiment_dir = fs_setup(experiment_name, seed, config)
@@ -158,7 +159,7 @@ def exp_imputation(experiment_name, model_list, config, num_of_epoch, CUDA_VISIB
             trainer.train(max_epochs=num_of_epoch)
 
             # imputation RMSE
-            l_out_sample, wl, xm, xmix = trainer.imputation(Xz, M)
+            l_out_sample, wl, xm, xmix = trainer.imputation(Xz, M, impute_sample)
             if expr_basename == 'miwae':
                 RMSE_result['miwae'].append(RMSE(Xtrain, xm, M))
             elif expr_basename == 'notmiwae':

@@ -137,11 +137,12 @@ class notMIWAE(nn.Module):
         return q_mu, q_log_sig
 
     #randomize latent vector
-    def reparameterize(self, mu, log_var):
+    def reparameterize(self, mu, log_var, n_samples):
         std = torch.sqrt(torch.exp(log_var))
         q_z = pdfun.normal.Normal(loc = mu, scale=std)
         # q_z.rsample(self.n_samples): shape [n_samples, batch_size, d] 
-        return q_z, q_z.rsample(self.n_samples)
+        #           .permute(1, 0, 2): shape [batch_size, n_samples, d]
+        return q_z, q_z.rsample(n_samples).permute(1, 0, 2)
 
     def _gauss_decoder(self, z):
         z = self.fc_dec(z) #in z_dim, out h_dim
@@ -203,7 +204,7 @@ class notMIWAE(nn.Module):
         elif self.out_dist in ['t', 't-distribution']:
             mu, log_sig, df = self._t_decoder(z)
             # p(x|z)
-            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
+            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 1e-4,
                                                   df=3 + torch.nn.softplus(df))
             l_out_sample = p_x_given_z.sample()
 
@@ -214,15 +215,17 @@ class notMIWAE(nn.Module):
             l_out_sample = p_x_given_z.sample()
         return l_out_sample
 
-    def forward(self, x):
+    def forward(self, x, n_samples = 0):
         ##########################
         """
         input:
         batch self.M, self.X in utils/dataframe
         n_samples represents sample dim for sampling
         """ 
+        if n_samples == 0:
+            n_samples = self.n_samples
         x = torch.reshape(x, (-1,self.d))
-        m = torch.isnan(x).float().clone()
+        m = torch.isnan(x).float().clone() #missing indicator, same as s in the paper
         #m = torch.reshape(m, (-1,self.d)) #TODO: need to confirm if data itself is correct, shape is correct now
         x = torch.nan_to_num(x, nan = 0)
         if not self.testing and self.learnable_imputation:
@@ -240,21 +243,19 @@ class notMIWAE(nn.Module):
         outdic['q_mu'], outdic['q_log_sig'] = q_mu, q_log_sig
 
         # sample latent values
-        q_z, l_z = self.reparameterize(q_mu, q_log_sig)
+        q_z, l_z = self.reparameterize(q_mu, q_log_sig, n_samples)
 
         """
         VAE stucture only need: l_out_sample = self.decoder(l_z)
         the forward should end up here. 
         But I compute some complicated term for notMIWAE_ELBO in the following
         since if I use self.decoder in the trainer and get the loss 
-        z = z.permute(1, 0, 2) and logits = self._bernoulli_decoder(z) will operate twice
+        p_x_given_z declaration  and  logits = self._bernoulli_decoder(z) will operate twice
         TODO: ##########################################################################
         TODO: find some way to split the function and avoid double computing anything
         TODO: ##########################################################################
         """
         # parameters from decoder
-        # l_z: shape [n_samples, batch_size, d] 
-        l_z = l_z.permute(1, 0, 2)  # shape [batch_size, n_samples, d]
         if self.out_dist in ['gauss', 'normal']:
             mu, std = self._gauss_decoder(l_z)
             # p(x|z)
@@ -265,7 +266,7 @@ class notMIWAE(nn.Module):
         elif self.out_dist in ['t', 't-distribution']:
             mu, log_sig, df = self._t_decoder(l_z)
             # p(x|z)
-            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 0.0001,
+            p_x_given_z = pdfun.studentT.StudentT(loc=mu, scale=torch.nn.softplus(log_sig) + 1e-4,
                                                   df=3 + torch.nn.softplus(df))
             self.l_out_mu = mu
             l_out_sample = p_x_given_z.sample()
@@ -277,9 +278,20 @@ class notMIWAE(nn.Module):
             p_x_given_z = pdfun.bernoulli.Bernoulli(logits=logits)  # (probs=y + self.eps)
             self.l_out_mu = torch.sigmoid(logits) # TODO: logits?
             l_out_sample = p_x_given_z.sample()
-
-        # missing process
-        # mix x_o with samples of x_m
+        #---------------------#
+        #     End decoder     #
+        #---------------------#
+        outdic['lpxz'], outdic['lpmz'], outdic['lqzx'], outdic['lpz'] = self.log_likelihood(x, m, l_out_sample, q_z, l_z, p_x_given_z)
+        return outdic, q_z, l_out_sample 
+        # l_out_sample is sample from p_x_given_z in decoder
+        # z is sample from q_z, then obtain the ouput l_out_sample by decode(z)
+    
+    def log_likelihood(self, x, m, l_out_sample, q_z, l_z, p_x_given_z):
+        #-----------------------------#
+        #       missing process       #
+        # mix x_o with samples of x_m # 
+        #     eq(10) in the paper     # 
+        #-----------------------------#
         l_out_mixed = l_out_sample * torch.unsqueeze(1 - m, 1) + torch.unsqueeze(x * m, 1)
         logits_miss = self._bernoulli_missing_process(l_out_mixed)
 
@@ -302,10 +314,7 @@ class notMIWAE(nn.Module):
                 torch.unsqueeze(m, 1) * p_x_given_z.log_prob(torch.unsqueeze(x, 1)), -1)
                 #shape [batch, 1, self.d]   [batch, 1, self.d]
         log_p_z = torch.sum(self.latent_prior.log_prob(l_z), -1) #evaluate the z-samples in the prior
-        outdic['lpxz'], outdic['lpmz'], outdic['lqzx'], outdic['lpz'] = log_p_x_given_z, log_p_m_given_x, log_q_z_given_x, log_p_z
-        return outdic, q_z, l_out_sample 
-        # l_out_sample is sample from p_x_given_z in decoder
-        # z is sample from q_z, then obtain the ouput l_out_sample by decode(z)
+        return log_p_x_given_z, log_p_m_given_x, log_q_z_given_x, log_p_z
 
     def permutation_invariant_embedding(self, x, m):
         """

@@ -112,11 +112,11 @@ class VAE_trainer(object):
         KLD = -0.5 * torch.sum(1 + q_log_sig - torch.square(q_mu) - torch.exp(q_log_sig))
         return BCE + KLD
     
-    def imputation(self, x, m):
+    def imputation(self, x, m, n_samples=0):
         """
         x: Xz[np.isnan(Xnan)] = 0
         """
-        outdic, q_z, l_out_sample  = self.model(x)
+        outdic, q_z, l_out_sample  = self.model(x, n_samples)
         lpxz, lqzx, lpz = outdic['lpxz'], outdic['lqzx'], outdic['lpz'] 
         l_w = lpxz + lpz - lqzx # importance weights in the paper eq(4) 
         wl = F.softmax(l_w, dim = 1) #TODO: check
