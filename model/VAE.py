@@ -7,7 +7,7 @@ import torch.utils.data
 https://arxiv.org/pdf/1312.6114.pdf
 """
 class VAE(nn.Module):
-    def __init__(self, input_dim = 784, h_dim= 400, z_dim = 20):
+    def __init__(self, input_dim: int = 784, h_dim: int = 400, z_dim: int = 20):
         super(VAE, self).__init__()
         self.loss = 'VAE_loss'
         self.input_dim = input_dim

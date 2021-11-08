@@ -18,7 +18,7 @@ from utils.dataframe import UCIDatasets
 from utils.trainer import VAE_trainer
 from utils.utils import RMSE
 
-def fs_setup(experiment_name, seed, config, project_dir = "."):
+def fs_setup(experiment_name: str, seed: int, config, project_dir: str = "."):
     """
     Setup the experiments folder
     use config.json to record the parameters of experiment 
@@ -62,7 +62,7 @@ def check_training_file(expr_file):
     }
     return output
 
-def exp_imputation(experiment_name, model_list, config, num_of_epoch, CUDA_VISIBLE_DEVICES = "0,1"):
+def exp_imputation(experiment_name: str, model_list: list, config: dict, num_of_epoch: int, CUDA_VISIBLE_DEVICES: str = "0,1"):
     """
     Use the MIWAE and not-MIWAE on UCI data
     """
@@ -167,6 +167,7 @@ def exp_imputation(experiment_name, model_list, config, num_of_epoch, CUDA_VISIB
 
         # ---- mean imputation ---- #
         impO = imputer(Xnan, method='mean')
+        impO.par_setting(imputer_par)
         impO.train()
         imp = impO.imp
         Xrec = imp.transform(Xnan)
@@ -174,6 +175,7 @@ def exp_imputation(experiment_name, model_list, config, num_of_epoch, CUDA_VISIB
 
         # ---- mice imputation ---- #
         impO = imputer(Xnan, method='mice')
+        impO.par_setting(imputer_par)
         impO.train()
         imp = impO.imp
         Xrec = imp.transform(Xnan)
@@ -181,6 +183,7 @@ def exp_imputation(experiment_name, model_list, config, num_of_epoch, CUDA_VISIB
 
         # ---- missForest imputation ---- #
         impO = imputer(Xnan, method='missForest')
+        impO.par_setting(imputer_par)
         impO.train()
         imp = impO.imp
         Xrec = imp.transform(Xnan)

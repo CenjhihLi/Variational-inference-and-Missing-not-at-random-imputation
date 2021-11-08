@@ -65,6 +65,10 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  https://doi.org/10.1093/biomet/asz054 (Biometrika, 2019) (this is for missing response y)  
  Nonparametric Pattern-Mixture Models: https://arxiv.org/pdf/1904.11085.pdf (Arxiv, 2019)  
 
+
+ Diffussion Variational inference: 
+ https://arxiv.org/pdf/2107.00630.pdf
+
  # environment:
  I recommend using docker or anaconda.  
  

@@ -7,7 +7,7 @@ GAIN: https://www.vanderschaar-lab.com/papers/ICML_GAIN.pdf (ICML, 2018)
 """
 
 class Discriminator(nn.Module):
-    def __init__(self, data_dim):
+    def __init__(self, data_dim: int):
         super(Discriminator, self).__init__()
         self.fc1 = nn.Linear(data_dim*2, 256)
         self.fc2 = nn.Linear(256, 128)

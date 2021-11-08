@@ -72,8 +72,8 @@ def _reduce_mem_usage(df):
 
 class UCIDatasets(object):
     #https://gist.github.com/martinferianc/db7615c85d5a3a71242b4916ea6a14a2
-    def __init__(self,  name,  data_path="./data/", normalize = False, permutation = False, 
-                n_splits = 10, seed=1, shuffle = False):
+    def __init__(self,  name: str,  data_path: str = "./data/", normalize: bool = False, permutation: bool = False, 
+                n_splits: int = 10, seed: int = 1, shuffle: bool = False):
         """
         Store data and preprocessing via numpy
         Perhaps pandas will be more convenient?
@@ -131,7 +131,7 @@ class UCIDatasets(object):
         del url, file_name
         gc.collect()
         
-    def _split_dataset(self, n_splits = 10, seed=1, shuffle = False):  
+    def _split_dataset(self, n_splits: int = 10, seed: int = 1, shuffle: bool = False):  
         seed = seed if shuffle else None      
         kf = KFold(n_splits=n_splits, shuffle=shuffle, random_state = seed)
         self.data_splits = kf.split(self.data)
@@ -156,20 +156,21 @@ class UCIDatasets(object):
             self.data = self.data[np.random.permutation(self.N)]
             self.permutation=True
     
-    def get_dataloader(self, batch_size = 16, shuffle = False, num_workers = 2):
+    def get_dataloader(self, batch_size: int = 16, shuffle: bool = False, num_workers: int = 2):
         return DataLoader(dataset = self.data,
                         batch_size = batch_size,
                         shuffle = shuffle,
                         num_workers = num_workers)
 
-    def get_split_dataloader(self, split=-1, load = "train", batch_size = 16, shuffle = False, num_workers = 2, ):
+    def get_split_dataloader(self, split: int = -1, load: str = "train", batch_size: int = 16, shuffle: bool = False, 
+        num_workers: int = 2, ):
         data = self.get_split(split = split, load = load)
         return DataLoader(dataset = data,
                         batch_size = batch_size,
                         shuffle = shuffle,
                         num_workers = num_workers)
 
-    def get_split(self, split=-1, load = "train"):
+    def get_split(self, split: int = -1, load: str = "train"):
         if split == -1:
             split = 0
         if 0<=split and split<self.n_splits: 

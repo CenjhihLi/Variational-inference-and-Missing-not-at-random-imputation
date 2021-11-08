@@ -6,7 +6,7 @@ from sklearn.ensemble import RandomForestRegressor
 method_list = ['mean', 'median', 'most_frequent', 'mice', 'missForest', 'knn']
 
 class imputer(object):
-    def __init__(self, X, method):
+    def __init__(self, X, method: str):
         self.X = X
         self.method = method
         self._pardict = { 
@@ -62,7 +62,7 @@ class imputer(object):
         #TODO: find some way to use single loop
         return out
     
-    def par_setting(self, par):
+    def par_setting(self, par: dict):
         for key in par:
             value = par[key]
             if key in self._parmap:

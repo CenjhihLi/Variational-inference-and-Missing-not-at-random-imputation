@@ -15,19 +15,19 @@ class MIWAE(nn.Module):
     http://proceedings.mlr.press/v97/mattei19a/mattei19a.pdf
     """
     def __init__(self, data_dim,
-                z_dim=50, h_dim=100, n_samples=1,
-                activation=nn.Tanh,
-                out_dist='gauss',
-                out_activation=None,
-                latent_prior = pdfun.normal.Normal(loc=0.0, scale=1.0),
-                learnable_imputation=False,
-                permutation_invariance=False,
-                embedding_size=20,
-                code_size=20, 
+                z_dim: int = 50, h_dim: int = 100, n_samples: int = 1,
+                out_dist: str ='gauss',
+                embedding_size: int =20,
+                code_size: int = 20, 
+                learnable_imputation: bool = False,
+                permutation_invariance: bool = False,
                 # TODO: the input dim should consider this, 
                 #    or this should be same as the data_dim
                 #I think is the first one    #paper does not mension embedding
-                testing=False,
+                testing: bool = False,
+                activation = nn.Tanh,
+                out_activation = None,
+                latent_prior = pdfun.normal.Normal(loc=0.0, scale=1.0),
                 imp = None #should be a mask with (1,self.d)
                 ):
         """
