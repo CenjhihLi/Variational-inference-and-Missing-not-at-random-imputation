@@ -66,12 +66,14 @@ The `Demo.ipynb` file will demonstrate how to use the objects in the project.
  Nonparametric Pattern-Mixture Models: https://arxiv.org/pdf/1904.11085.pdf (Arxiv, 2019)  
 
 
- Diffussion Variational inference: 
+ Diffusion Variational inference:(not for missing imputation)  
  https://arxiv.org/pdf/2107.00630.pdf
 
  # environment:
  I recommend using docker or anaconda.  
- 
+ This project will use python and pytorch.  
+ R also has some missing imputation package, e.g. imputeTS, mice, missForest, missMDA, VIM, etc.  
+
  Personally Recommend:  
  1. R is convenient in processing structured data but is really slow for developing my own methods.  
     If using R, using `Rcpp` and developing the methods by C++ might be great.  
