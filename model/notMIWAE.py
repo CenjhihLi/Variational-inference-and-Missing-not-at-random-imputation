@@ -120,9 +120,9 @@ class notMIWAE(nn.Module):
         self.W = Variable(torch.randn(1, 1, self.d))  #for missing_process
         self.b = Variable(torch.randn(1, 1, self.d))  #for missing_process
 
-        self.init_weight()
+        self._init_weight()
 
-    def init_weight(self):
+    def _init_weight(self):
         #layers = [self.enc, self.fc_mu, self.fc_sig, self.fc_dec, self.fc_dec_ber, self.fc_dec_mu_gauss,
         #    self.fc_dec_std, self.fc_dec_df, self.fc_dec_logits, self.emb]
         #[nn.init.xavier_normal_(layer.weight) for layer in layers]

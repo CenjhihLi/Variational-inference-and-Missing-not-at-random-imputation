@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.distributions as pdfun
 
@@ -9,6 +10,7 @@ GAIN: https://www.vanderschaar-lab.com/papers/ICML_GAIN.pdf (ICML, 2018)
 class Discriminator(nn.Module):
     def __init__(self, data_dim: int):
         super(Discriminator, self).__init__()
+        #self.d = data_dim
         self.fc1 = nn.Linear(data_dim*2, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, data_dim)
@@ -36,8 +38,9 @@ class Discriminator(nn.Module):
         return out    
 
 class Generator(torch.nn.Module):
-    def __init__(self, data_dim):
+    def __init__(self, data_dim: int):
         super(Generator, self).__init__()
+        #self.d = data_dim
         self.fc1 = torch.nn.Linear(data_dim*2, 256)
         self.fc2 = torch.nn.Linear(256, 128)
         self.fc3 = torch.nn.Linear(128, data_dim)
@@ -48,7 +51,7 @@ class Generator(torch.nn.Module):
     def init_weight(self):
         layers = [self.fc1, self.fc2, self.fc3]
         [torch.nn.init.xavier_normal_(layer.weight) for layer in layers]
-        
+
     def forward(self, x, z, m):
         """
         eq(2) in the paper

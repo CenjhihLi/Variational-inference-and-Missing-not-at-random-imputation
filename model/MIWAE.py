@@ -105,9 +105,9 @@ class MIWAE(nn.Module):
         self.fc_dec_logits = nn.Linear(h_dim, self.d) # prob = y + eps
         self.emb = nn.Linear(self.embedding_size + 1,self.code_size) #for embedding
         self.E = Variable(torch.randn(self.d, self.embedding_size))  #for embedding
-        self.init_weight()
+        self._init_weight()
 
-    def init_weight(self):
+    def _init_weight(self):
         #layers = [self.enc, self.fc_mu, self.fc_sig, self.fc_dec, self.fc_dec_ber, self.fc_dec_mu_gauss,
         #    self.fc_dec_std, self.fc_dec_df, self.fc_dec_logits, self.emb]
         #[nn.init.xavier_normal_(layer.weight) for layer in layers]
